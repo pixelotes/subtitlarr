@@ -31,7 +31,7 @@ USER appuser
 WORKDIR /app
 
 # Copy the application source code
-COPY ./src .
+COPY . /app
 
 # Add the venv to the PATH
 ENV PATH="/opt/venv/bin:$PATH"
