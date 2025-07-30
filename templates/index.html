@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subtitlarr</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Subtitlarr</h1>
+        
+        <div class="card">
+            <h2 id="config-header" class="collapsible-header">
+                <span class="toggle-arrow">▼</span>
+                Configuration
+            </h2>
+            
+            <div id="config-content" class="collapsible-content">
+                <div id="config-form">
+                    <label>Search Paths:</label>
+                    <div id="paths-container">
+                        {% for path in config.search_paths %}
+                        <div class="input-group"><input type="text" value="{{ path }}" class="path-input"><button class="btn-delete">&times;</button></div>
+                        {% endfor %}
+                    </div>
+                    <button id="add-path" class="btn-add">Add Path</button>
+                    <hr>
+                    <label>Languages (2-letter codes):</label>
+                    <div id="langs-container">
+                        {% for lang in config.languages %}
+                        <div class="input-group"><input type="text" value="{{ lang }}" class="lang-input"><button class="btn-delete">&times;</button></div>
+                        {% endfor %}
+                    </div>
+                    <button id="add-lang" class="btn-add">Add Language</button>
+                    <hr>
+                    <label>Download Scheduler</label>
+                    <div class="form-switch">
+                        <label for="schedule-enabled">Enable automatic download:</label>
+                        <input type="checkbox" id="schedule-enabled" class="schedule-input" {% if config.schedule_enabled %}checked{% endif %}>
+                    </div>
+                    <div class="input-group">
+                        <label for="schedule-interval">Run every (minutes):</label>
+                        <input type="number" id="schedule-interval" class="schedule-input" value="{{ config.schedule_interval_minutes }}">
+                    </div>
+                </div>
+                <div class="actions">
+                    <button id="save-config">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="scanBtn">Scan Status</button>
+            <button id="downloadBtn">Download Missing</button>
+        </div>
+
+        <div class="card">
+            <h2>Status & Logs</h2>
+            <pre id="log-output">Welcome. Save a configuration and scan your media.</pre>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

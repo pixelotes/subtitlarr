@@ -1,0 +1,12 @@
+{
+  "search_paths": [
+    "/media/series",
+    "/media/movies"
+  ],
+  "languages": [
+    "es",
+    "en"
+  ],
+  "schedule_enabled": true,
+  "schedule_interval_minutes": 180
+}
