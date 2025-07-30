@@ -31,7 +31,7 @@ def scan_media_status(paths, languages):
         # --- INICIO DEL CAMBIO ---
         if not path_obj.is_dir():
             # Si la ruta no existe o no es un directorio, añade un resultado de error
-            results.append({'path': path_str, 'error': 'Ruta no encontrada o no es un directorio.'})
+            results.append({'path': path_str, 'error': 'Path not found or not a directory.'})
             continue # Pasa a la siguiente ruta
         # --- FIN DEL CAMBIO ---
             
@@ -53,14 +53,14 @@ def run_downloader(paths, languages, status_callback=None):
     Acepta una función de callback para notificar el estado a la UI.
     """
     if status_callback:
-        status_callback("Iniciando escaneo y descarga...")
+        status_callback("Starting scan and download...")
 
     videos_to_scan = list(scan_videos(paths))
     total_videos = len(videos_to_scan)
 
     for i, video_path in enumerate(videos_to_scan):
         if status_callback:
-            status_callback(f"Procesando [{i+1}/{total_videos}]: {video_path.name}")
+            status_callback(f"Processing [{i+1}/{total_videos}]: {video_path.name}")
         
         # Determina qué idiomas faltan para este vídeo
         missing_languages = set()
@@ -80,12 +80,32 @@ def run_downloader(paths, languages, status_callback=None):
             
             if subtitles[video]:
                 saved_count = len(subliminal.save_subtitles(video, subtitles[video]))
-                logging.info(f"SUCCESS: Se guardaron {saved_count} subtítulos para {video_path.name}")
+                logging.info(f"SUCCESS: Saved {saved_count} subtitles for {video_path.name}")
                 if status_callback:
-                    status_callback(f"ÉXITO: Se encontraron {saved_count} subtítulos para {video_path.name}")
+                    status_callback(f"SUCCESS: Found {saved_count} subtitles for {video_path.name}")
             
         except Exception as e:
-            logging.error(f"Ocurrió un error procesando {video_path.name}: {e}")
+            logging.error(f"An error occured while processing {video_path.name}: {e}")
     
     if status_callback:
-        status_callback("¡Proceso de descarga completado!")
+        status_callback("Download process completed!")
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Standalone subtitle downloader for video files.")
+    parser.add_argument('folders', nargs='+', help='One or more folders to scan.')
+    parser.add_argument('-l', '--languages', nargs='+', required=True, help="Languages to download (ie: es en).")
+    
+    args = parser.parse_args()
+
+    print(f"Standalone mode: Scanning folders {args.folders} for languages {args.languages}")
+    
+    # Define una función simple para imprimir el estado en la consola
+    def console_status_callback(message):
+        print(message)
+
+    # Llama a la función principal de descarga
+    run_downloader(args.folders, args.languages, status_callback=console_status_callback)
+
+    print("Standalone process finished.")
