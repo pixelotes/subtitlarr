@@ -5,8 +5,18 @@ import logging
 from pathlib import Path
 from babelfish import Language
 import subliminal
+from subliminal import region
 
-# --- Configuración ---
+# --- Configuración del Cache de Subliminal ---
+# Esto asegura que el cache se guarde en una ruta predecible dentro del contenedor.
+cache_path = '/app/cache' 
+os.makedirs(cache_path, exist_ok=True)
+region.configure(
+    'dogpile.cache.dbm',
+    arguments={'filename': os.path.join(cache_path, 'cache.dbm')}
+)
+
+# --- Configuración General ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 VIDEO_EXTENSIONS = ('.mp4', '.mkv', '.avi', '.m4v', '.ts')
 
@@ -54,7 +64,10 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
     if status_callback:
         status_callback("Starting scan and download process...")
 
-    # --- Lógica para construir la configuración de proveedores ---
+    # Define la lista de proveedores a usar
+    providers = ['opensubtitles', 'addic7ed', 'podnapisi', 'tvsubtitles']
+    
+    # Construye la configuración para los proveedores que requieren autenticación
     provider_configs = {}
     if credentials:
         # Configuración para OpenSubtitles.com
@@ -78,6 +91,7 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
         if status_callback:
             status_callback(f"Processing [{i+1}/{total_videos}]: {video_path.name}")
         
+        # Comprueba qué subtítulos faltan antes de hacer la búsqueda
         missing_languages = set()
         for lang in languages:
             expected_subtitle = video_path.with_name(f"{video_path.stem}.{lang}.srt")
@@ -87,11 +101,15 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
         if not missing_languages:
             continue
 
+        # Llama a subliminal solo si faltan subtítulos
         try:
             video = subliminal.scan_video(str(video_path))
             subtitles = subliminal.download_best_subtitles(
-                [video], {Language(lang) for lang in missing_languages},
-                provider_configs=provider_configs  # Pasa las credenciales a subliminal
+                videos=[video], 
+                # Se revierte al método del script original, que es más específico y robusto
+                languages={Language.fromalpha2(lang) for lang in missing_languages},
+                providers=providers,
+                provider_configs=provider_configs
             )
             
             if subtitles[video]:
