@@ -54,11 +54,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const scheduleEnabled = document.getElementById('schedule-enabled').checked;
         const scheduleInterval = parseInt(document.getElementById('schedule-interval').value, 10);
 
+        // Recoger los nuevos valores de credenciales
+        const osKey = document.getElementById('opensubtitles-key').value;
+        const addic7edUser = document.getElementById('addic7ed-user').value;
+        const addic7edPass = document.getElementById('addic7ed-pass').value;
+
         const newConfig = {
             search_paths: paths,
             languages: langs,
             schedule_enabled: scheduleEnabled,
-            schedule_interval_minutes: scheduleInterval
+            schedule_interval_minutes: scheduleInterval,
+            credentials: {
+                opensubtitles: { api_key: osKey },
+                addic7ed: { username: addic7edUser, password: addic7edPass }
+            }
         };
 
         log('💾 Saving configuration...');

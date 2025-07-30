@@ -43,6 +43,20 @@
                         <label for="schedule-interval">Run every (minutes):</label>
                         <input type="number" id="schedule-interval" class="schedule-input" value="{{ config.schedule_interval_minutes }}">
                     </div>
+                    <hr>
+                    <label>Credenciales de Proveedores</label>
+                    <div class="input-group">
+                        <label for="opensubtitles-key">OpenSubtitles API Key:</label>
+                        <input type="password" id="opensubtitles-key" value="{{ config.credentials.opensubtitles.api_key }}">
+                    </div>
+                    <div class="input-group">
+                        <label for="addic7ed-user">Addic7ed Username:</label>
+                        <input type="text" id="addic7ed-user" value="{{ config.credentials.addic7ed.username }}">
+                    </div>
+                    <div class="input-group">
+                        <label for="addic7ed-pass">Addic7ed Password:</label>
+                        <input type="password" id="addic7ed-pass" value="{{ config.credentials.addic7ed.password }}">
+                    </div>
                 </div>
                 <div class="actions">
                     <button id="save-config">Save Changes</button>

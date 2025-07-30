@@ -19,6 +19,8 @@ def scan_videos(folders):
         if p.is_dir():
             for ext in VIDEO_EXTENSIONS:
                 yield from p.rglob(f'*{ext}')
+        else:
+            logging.warning(f"La ruta '{folder}' no existe o no es un directorio, se omitirá.")
 
 def scan_media_status(paths, languages):
     """
@@ -28,12 +30,9 @@ def scan_media_status(paths, languages):
     results = []
     for path_str in paths:
         path_obj = Path(path_str)
-        # --- INICIO DEL CAMBIO ---
         if not path_obj.is_dir():
-            # Si la ruta no existe o no es un directorio, añade un resultado de error
-            results.append({'path': path_str, 'error': 'Path not found or not a directory.'})
-            continue # Pasa a la siguiente ruta
-        # --- FIN DEL CAMBIO ---
+            results.append({'path': path_str, 'error': 'Path not found or is not a directory.'})
+            continue
             
         status = {'path': path_str, 'videos': 0, 'missing': 0}
         video_files = scan_videos([path_str])
@@ -47,14 +46,31 @@ def scan_media_status(paths, languages):
         results.append(status)
     return results
 
-def run_downloader(paths, languages, status_callback=None):
+def run_downloader(paths, languages, credentials=None, status_callback=None):
     """
     Ejecuta el proceso de descarga de subtítulos.
-    Acepta una función de callback para notificar el estado a la UI.
+    Acepta credenciales para los providers y un callback para notificar el estado.
     """
     if status_callback:
-        status_callback("Starting scan and download...")
+        status_callback("Starting scan and download process...")
 
+    # --- Lógica para construir la configuración de proveedores ---
+    provider_configs = {}
+    if credentials:
+        # Configuración para OpenSubtitles.com
+        os_key = credentials.get('opensubtitles', {}).get('api_key')
+        if os_key:
+            provider_configs['opensubtitles'] = {'username': 'subtitlarr', 'password': os_key}
+            logging.info("OpenSubtitles credentials loaded.")
+
+        # Configuración para Addic7ed
+        addic7ed_creds = credentials.get('addic7ed', {})
+        addic7ed_user = addic7ed_creds.get('username')
+        addic7ed_pass = addic7ed_creds.get('password')
+        if addic7ed_user and addic7ed_pass:
+            provider_configs['addic7ed'] = {'username': addic7ed_user, 'password': addic7ed_pass}
+            logging.info("Addic7ed credentials loaded.")
+            
     videos_to_scan = list(scan_videos(paths))
     total_videos = len(videos_to_scan)
 
@@ -62,7 +78,6 @@ def run_downloader(paths, languages, status_callback=None):
         if status_callback:
             status_callback(f"Processing [{i+1}/{total_videos}]: {video_path.name}")
         
-        # Determina qué idiomas faltan para este vídeo
         missing_languages = set()
         for lang in languages:
             expected_subtitle = video_path.with_name(f"{video_path.stem}.{lang}.srt")
@@ -75,37 +90,49 @@ def run_downloader(paths, languages, status_callback=None):
         try:
             video = subliminal.scan_video(str(video_path))
             subtitles = subliminal.download_best_subtitles(
-                [video], {Language(lang) for lang in missing_languages}
+                [video], {Language(lang) for lang in missing_languages},
+                provider_configs=provider_configs  # Pasa las credenciales a subliminal
             )
             
             if subtitles[video]:
                 saved_count = len(subliminal.save_subtitles(video, subtitles[video]))
-                logging.info(f"SUCCESS: Saved {saved_count} subtitles for {video_path.name}")
+                logging.info(f"SUCCESS: Saved {saved_count} new subtitle(s) for {video_path.name}")
                 if status_callback:
                     status_callback(f"SUCCESS: Found {saved_count} subtitles for {video_path.name}")
             
         except Exception as e:
-            logging.error(f"An error occured while processing {video_path.name}: {e}")
+            logging.error(f"An error occurred while processing {video_path.name}: {e}")
     
     if status_callback:
-        status_callback("Download process completed!")
+        status_callback("Download process complete!")
 
+
+# --- Bloque de ejecución para modo Standalone ---
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Standalone subtitle downloader for video files.")
-    parser.add_argument('folders', nargs='+', help='One or more folders to scan.')
-    parser.add_argument('-l', '--languages', nargs='+', required=True, help="Languages to download (ie: es en).")
+    parser = argparse.ArgumentParser(description="Downloads subtitles for video files in standalone mode.")
+    parser.add_argument('folders', nargs='+', help='One or more folders to scan for videos.')
+    parser.add_argument('-l', '--languages', nargs='+', required=True, help="Languages to download (e.g., en es).")
+    
+    # Argumentos opcionales para credenciales
+    parser.add_argument('--opensubtitles-key', help='API Key for OpenSubtitles.com.')
+    parser.add_argument('--addic7ed-user', help='Addic7ed username.')
+    parser.add_argument('--addic7ed-pass', help='Addic7ed password.')
     
     args = parser.parse_args()
 
-    print(f"Standalone mode: Scanning folders {args.folders} for languages {args.languages}")
-    
-    # Define una función simple para imprimir el estado en la consola
+    # Construir diccionario de credenciales desde los argumentos de la terminal
+    cli_credentials = {
+        "opensubtitles": {"api_key": args.opensubtitles_key},
+        "addic7ed": {"username": args.addic7ed_user, "password": args.addic7ed_pass}
+    }
+
+    # Callback para imprimir el estado en la consola
     def console_status_callback(message):
         print(message)
 
-    # Llama a la función principal de descarga
-    run_downloader(args.folders, args.languages, status_callback=console_status_callback)
+    print(f"Standalone Mode: Scanning folders {args.folders} for languages {args.languages}")
+    run_downloader(args.folders, args.languages, credentials=cli_credentials, status_callback=console_status_callback)
 
     print("Standalone process finished.")
