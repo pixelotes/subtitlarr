@@ -1,0 +1,25 @@
+services:
+  subtitlarr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: subtitlarr
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PUID=1000 # Your user ID
+      - PGID=1000 # Your group ID
+      # - OPENSUBTITLES_API_KEY=your_api_key_here
+      # - ADDIC7ED_USERNAME=your_username
+      # - ADDIC7ED_PASSWORD=your_password
+    volumes:
+      # Mount a local folder to persist the config.json
+      - ./config.json:/app/config.json
+      
+      # Mount a local folder to persist the subliminal cache
+      - ./cache:/app/cache
+
+      # Mount your media folders (change paths on the left)
+      - /path/to/your/series:/media/series
+      - /path/to/your/movies:/media/movies
