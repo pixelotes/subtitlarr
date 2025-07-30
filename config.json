@@ -4,9 +4,18 @@
     "/media/movies"
   ],
   "languages": [
-    "es",
-    "en"
+    "en",
+    "es"
   ],
   "schedule_enabled": true,
-  "schedule_interval_minutes": 180
+  "schedule_interval_minutes": 120,
+  "credentials": {
+    "opensubtitles": {
+      "api_key": ""
+    },
+    "addic7ed": {
+      "username": "",
+      "password": ""
+    }
+  }
 }
