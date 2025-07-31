@@ -1,3 +1,4 @@
-subliminal>=2.3.0
+subliminal
+schedule
 schedule
 Flask
