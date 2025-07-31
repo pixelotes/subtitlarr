@@ -7,22 +7,14 @@ GROUP_ID=${PGID:-1000}
 
 echo "Starting with UID: $USER_ID, GID: $GROUP_ID"
 
-# Create a group with a specific GID. --gid is the explicit, non-ambiguous flag.
-addgroup --gid "$GROUP_ID" appgroup
+# Create a group with a specific GID (-S for system group)
+addgroup -g "$GROUP_ID" -S appgroup
 
-# Create a user with a specific UID and GID.
-# --system creates a system user.
-# --no-create-home and --disabled-password are good practices.
-adduser \
-    --system \
-    --uid "$USER_ID" \
-    --gid "$GROUP_ID" \
-    --no-create-home \
-    --disabled-password \
-    appuser
+# Create a user with a specific UID (-S for system user, -G to add to group)
+adduser -u "$USER_ID" -S -G appgroup -h /app appuser
 
 # Set ownership for the app and cache directories
 chown -R appuser:appgroup /app
 
-# Execute the command passed to the entrypoint (CMD in Dockerfile)
-exec gosu appuser "$@"
+# Drop privileges and execute the command passed to the entrypoint (CMD in Dockerfile)
+exec su-exec appuser "$@"
