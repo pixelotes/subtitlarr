@@ -1,24 +1,23 @@
-# Dockerfile
-
 # ---- Stage 1: Builder ----
-FROM python:3.12-slim AS builder
+# Use Alpine base image. Install build-essentials for any C extensions in Python packages.
+FROM python:3.12-alpine AS builder
+
+RUN apk add --no-cache build-base
 
 # Create and activate a virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy only the requirements file to leverage Docker cache
+# Copy and install requirements
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 
 # ---- Stage 2: Final Image ----
-FROM python:3.12-slim
+FROM python:3.12-alpine
 
-# Install gosu for privilege handling
-RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
+# Install su-exec, the lightweight equivalent of gosu for Alpine
+RUN apk add --no-cache su-exec
 
 # Copy the virtual environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
@@ -38,4 +37,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENTRYPOINT ["entrypoint.sh"]
 
 # Set the default command to be executed by the entrypoint
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "app:app"]
