@@ -1,0 +1,42 @@
+# Git / Version Control
+.git
+.gitignore
+
+# Docker specific files
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Node.js dependencies
+node_modules
+npm-debug.log
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
+# Environment variables - Do not include secrets in the image
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# --- User Specified Ignores ---
+
+# Media library folder
+media/
+
+# Documentation
+README.md
+
+# GitHub Actions and community health files
+.github/
