@@ -44,7 +44,7 @@
                         <input type="number" id="schedule-interval" class="schedule-input" value="{{ config.schedule_interval_minutes }}">
                     </div>
                     <hr>
-                    <label>Credenciales de Proveedores</label>
+                    <label>Provider credentials</label>
                     <div class="input-group">
                         <label for="opensubtitles-key">OpenSubtitles API Key:</label>
                         <input type="password" id="opensubtitles-key" value="{{ config.credentials.opensubtitles.api_key }}">
@@ -71,7 +71,12 @@
 
         <div class="card">
             <h2>Status & Logs</h2>
-            <pre id="log-output">Welcome. Save a configuration and scan your media.</pre>
+            <div id="progress-container" class="hidden">
+                <progress id="progress-bar" value="0" max="100"></progress>
+                <span id="progress-label">0/0</span>
+            </div>
+            <pre id="log-output">{% for log in logs %}{{ log }}
+{% endfor %}</pre>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
