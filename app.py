@@ -5,11 +5,17 @@ import json
 import threading
 import time
 import schedule
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
+from collections import deque
+import queue
 import core
 
 # --- Setup de la aplicación ---
 app = Flask(__name__)
+
+# --- Sistema de Mensajería Interno ---
+message_queue = queue.Queue()
+log_history = deque(maxlen=1000)
 
 # --- Funciones de Configuración ---
 def load_config():
@@ -20,11 +26,8 @@ def load_config():
     except (FileNotFoundError, json.JSONDecodeError):
         config = {}
 
-    # Define la estructura por defecto para evitar errores
     defaults = {
-        "search_paths": [],
-        "languages": [],
-        "schedule_enabled": False,
+        "search_paths": [], "languages": [], "schedule_enabled": False,
         "schedule_interval_minutes": 60,
         "credentials": {
             "opensubtitles": {"api_key": ""},
@@ -32,16 +35,14 @@ def load_config():
         }
     }
 
-    # Fusiona la config cargada con los valores por defecto de forma segura
     for key, value in defaults.items():
         if key not in config:
             config[key] = value
         elif isinstance(value, dict):
-            for sub_key, sub_value in value.items():
+            for sub_key in value:
                  if sub_key not in config.get(key, {}):
-                     config[key][sub_key] = sub_value
+                     config[key][sub_key] = value[sub_key]
 
-    # Sobrescribe con variables de entorno si existen (prioridad máxima)
     creds = config['credentials']
     creds['opensubtitles']['api_key'] = os.environ.get('OPENSUBTITLES_API_KEY', creds.get('opensubtitles', {}).get('api_key'))
     creds['addic7ed']['username'] = os.environ.get('ADDIC7ED_USERNAME', creds.get('addic7ed', {}).get('username'))
@@ -54,18 +55,33 @@ def save_config(new_config):
     with open("config.json", "w") as f:
         json.dump(new_config, f, indent=2)
 
-# --- Lógica del Planificador de Tareas ---
+# --- Lógica del Planificador y Tareas de Fondo ---
+def status_callback(message, event_type="log"):
+    """Pone actualizaciones en la cola para ser enviadas por el stream SSE."""
+    data_to_send = json.dumps({"type": event_type, "message": message})
+    message_queue.put(data_to_send)
+    
+    if event_type == "log":
+        log_entry = f"[{time.strftime('%H:%M:%S')}] {message}"
+        log_history.append(log_entry)
+
+def download_task(config):
+    """La tarea de descarga que usa el callback con la cola."""
+    print("--- BACKGROUND TASK STARTED ---")
+    core.run_downloader(
+        config['search_paths'],
+        config['languages'],
+        credentials=config['credentials'],
+        status_callback=status_callback
+    )
+    status_callback("finished", event_type="status")
+    print("--- BACKGROUND TASK FINISHED ---")
+
 def scheduled_download_job():
     """La tarea que se ejecutará según la programación."""
-    print("--- TAREA PROGRAMADA INICIADA ---")
-    current_config = load_config()
-    # Pasa las credenciales a la función de descarga
-    core.run_downloader(
-        current_config['search_paths'],
-        current_config['languages'],
-        credentials=current_config['credentials']
-    )
-    print("--- TAREA PROGRAMADA FINALIZADA ---")
+    print("--- SCHEDULED TASK STARTED ---")
+    download_task(load_config())
+    print("--- SCHEDULED TASK FINISHED ---")
 
 def update_schedule(config):
     """Limpia y actualiza el planificador con la nueva configuración."""
@@ -73,10 +89,10 @@ def update_schedule(config):
     if config.get("schedule_enabled", False):
         interval = config.get("schedule_interval_minutes", 60)
         if int(interval) > 0:
-            print(f"Planificador actualizado: la tarea se ejecutará cada {interval} minutos.")
+            print(f"Scheduler updated: task will run every {interval} minutes.")
             schedule.every(int(interval)).minutes.do(scheduled_download_job)
     else:
-        print("Planificador desactivado.")
+        print("Scheduler disabled.")
 
 def run_scheduler():
     """Bucle que ejecuta las tareas pendientes en un hilo separado."""
@@ -88,8 +104,8 @@ def run_scheduler():
 # --- Rutas de la Web (Endpoints) ---
 @app.route('/')
 def index():
-    """Página principal que muestra la interfaz."""
-    return render_template('index.html', config=load_config())
+    """Página principal que muestra la interfaz y los logs históricos."""
+    return render_template('index.html', config=load_config(), logs=list(log_history))
 
 @app.route('/config', methods=['POST'])
 def update_config_route():
@@ -110,16 +126,18 @@ def scan_route():
 def download_route():
     """Inicia una descarga manual en un hilo de fondo."""
     current_config = load_config()
-    thread = threading.Thread(
-        target=core.run_downloader, 
-        args=(
-            current_config['search_paths'], 
-            current_config['languages'],
-            current_config['credentials']
-        )
-    )
+    thread = threading.Thread(target=download_task, args=(current_config,))
     thread.start()
-    return jsonify({'message': 'Manual download process started in the background.'})
+    return jsonify({'message': 'Download process started.'})
+
+@app.route('/stream')
+def stream():
+    """Ruta SSE que envía mensajes desde la cola al cliente."""
+    def event_stream():
+        while True:
+            message = message_queue.get()
+            yield f"data: {message}\n\n"
+    return Response(event_stream(), mimetype='text/event-stream')
 
 # --- Arranque de la aplicación y el hilo del planificador ---
 initial_config = load_config()

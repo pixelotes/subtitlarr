@@ -62,7 +62,7 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
     Acepta credenciales para los providers y un callback para notificar el estado.
     """
     if status_callback:
-        status_callback("Starting scan and download process...")
+        status_callback("Starting scan and download process...", event_type="log")
 
     # Define la lista de proveedores a usar
     providers = ['opensubtitles', 'addic7ed', 'podnapisi', 'tvsubtitles']
@@ -86,10 +86,16 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
             
     videos_to_scan = list(scan_videos(paths))
     total_videos = len(videos_to_scan)
+    
+    # Notifica el total para la barra de progreso al inicio
+    if status_callback:
+        status_callback(f"0/{total_videos}", event_type="progress")
 
     for i, video_path in enumerate(videos_to_scan):
+        # Envía el progreso y el log para cada vídeo
         if status_callback:
-            status_callback(f"Processing [{i+1}/{total_videos}]: {video_path.name}")
+            status_callback(f"Processing: {video_path.name}", event_type="log")
+            status_callback(f"{i+1}/{total_videos}", event_type="progress")
         
         # Comprueba qué subtítulos faltan antes de hacer la búsqueda
         missing_languages = set()
@@ -106,7 +112,6 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
             video = subliminal.scan_video(str(video_path))
             subtitles = subliminal.download_best_subtitles(
                 videos=[video], 
-                # Se revierte al método del script original, que es más específico y robusto
                 languages={Language.fromalpha2(lang) for lang in missing_languages},
                 providers=providers,
                 provider_configs=provider_configs
@@ -116,13 +121,15 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
                 saved_count = len(subliminal.save_subtitles(video, subtitles[video]))
                 logging.info(f"SUCCESS: Saved {saved_count} new subtitle(s) for {video_path.name}")
                 if status_callback:
-                    status_callback(f"SUCCESS: Found {saved_count} subtitles for {video_path.name}")
+                    status_callback(f"SUCCESS: Found {saved_count} subtitles for {video_path.name}", event_type="log")
             
         except Exception as e:
             logging.error(f"An error occurred while processing {video_path.name}: {e}")
+            if status_callback:
+                status_callback(f"ERROR processing {video_path.name}: {e}", event_type="log")
     
     if status_callback:
-        status_callback("Download process complete!")
+        status_callback("Scan and download finished.", event_type="log")
 
 
 # --- Bloque de ejecución para modo Standalone ---
