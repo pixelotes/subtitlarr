@@ -1,5 +1,6 @@
 # 💬 Subtitlarr
 A simple web UI wrapper for the excellent subliminal library, created to automatically and effortlessly download subtitles.
+![Main UI](media/subtitlarr.jpg)
 
 # Features
 * Web Interface to manage media paths, languages, and settings.
@@ -66,3 +67,4 @@ All configuration is managed through the web UI or by directly editing the `conf
 
 # License
 This project is licensed under the [MIT License](LICENSE).
+
