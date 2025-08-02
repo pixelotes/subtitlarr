@@ -37,4 +37,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENTRYPOINT ["entrypoint.sh"]
 
 # Set the default command to be executed by the entrypoint
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "app:app"]
+
+CMD ["python", "app.py"]
