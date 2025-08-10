@@ -9,7 +9,8 @@ from subliminal import region
 
 # --- Configuración del Cache de Subliminal ---
 # Esto asegura que el cache se guarde en una ruta predecible dentro del contenedor.
-cache_path = '/app/cache' 
+#cache_path = '/app/cache' 
+cache_path = './cache'
 os.makedirs(cache_path, exist_ok=True)
 region.configure(
     'dogpile.cache.dbm',
@@ -64,25 +65,46 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
     if status_callback:
         status_callback("Starting scan and download process...", event_type="log")
 
-    # Define la lista de proveedores a usar
-    providers = ['opensubtitles', 'addic7ed', 'podnapisi', 'tvsubtitles']
+    # Define la lista de proveedores a usar (incluyendo ambos OpenSubtitles)
+    providers = ['opensubtitles', 'opensubtitlescom', 'addic7ed', 'podnapisi', 'tvsubtitles']
     
     # Construye la configuración para los proveedores que requieren autenticación
     provider_configs = {}
     if credentials:
-        # Configuración para OpenSubtitles.com
-        os_key = credentials.get('opensubtitles', {}).get('api_key')
-        if os_key:
-            provider_configs['opensubtitles'] = {'username': 'subtitlarr', 'password': os_key}
-            logging.info("OpenSubtitles credentials loaded.")
-
+        # Configuración para OpenSubtitles (legacy)
+        os_legacy_creds = credentials.get('opensubtitles', {})
+        os_legacy_username = os_legacy_creds.get('username')
+        os_legacy_password = os_legacy_creds.get('password')
+        
+        if os_legacy_username and os_legacy_password:
+            provider_configs['opensubtitles'] = {
+                'username': os_legacy_username, 
+                'password': os_legacy_password
+            }
+            logging.info("OpenSubtitles (legacy) credentials configured.")
+        
+        # Configuración para OpenSubtitles.com (nuevo sitio)
+        os_com_creds = credentials.get('opensubtitlescom', {})
+        os_com_username = os_com_creds.get('username')
+        os_com_password = os_com_creds.get('password')
+        
+        if os_com_username and os_com_password:
+            provider_configs['opensubtitlescom'] = {
+                'username': os_com_username, 
+                'password': os_com_password
+            }
+            logging.info("OpenSubtitles.com credentials configured.")
+        
         # Configuración para Addic7ed
         addic7ed_creds = credentials.get('addic7ed', {})
         addic7ed_user = addic7ed_creds.get('username')
         addic7ed_pass = addic7ed_creds.get('password')
         if addic7ed_user and addic7ed_pass:
-            provider_configs['addic7ed'] = {'username': addic7ed_user, 'password': addic7ed_pass}
-            logging.info("Addic7ed credentials loaded.")
+            provider_configs['addic7ed'] = {
+                'username': addic7ed_user, 
+                'password': addic7ed_pass
+            }
+            logging.info("Addic7ed credentials configured.")
             
     videos_to_scan = list(scan_videos(paths))
     total_videos = len(videos_to_scan)
@@ -141,7 +163,10 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--languages', nargs='+', required=True, help="Languages to download (e.g., en es).")
     
     # Argumentos opcionales para credenciales
-    parser.add_argument('--opensubtitles-key', help='API Key for OpenSubtitles.com.')
+    parser.add_argument('--opensubtitles-username', help='Username for OpenSubtitles (legacy).')
+    parser.add_argument('--opensubtitles-password', help='Password for OpenSubtitles (legacy).')
+    parser.add_argument('--opensubtitlescom-username', help='Username for OpenSubtitles.com.')
+    parser.add_argument('--opensubtitlescom-password', help='Password/API Key for OpenSubtitles.com.')
     parser.add_argument('--addic7ed-user', help='Addic7ed username.')
     parser.add_argument('--addic7ed-pass', help='Addic7ed password.')
     
@@ -149,8 +174,18 @@ if __name__ == '__main__':
 
     # Construir diccionario de credenciales desde los argumentos de la terminal
     cli_credentials = {
-        "opensubtitles": {"api_key": args.opensubtitles_key},
-        "addic7ed": {"username": args.addic7ed_user, "password": args.addic7ed_pass}
+        "opensubtitles": {
+            "username": args.opensubtitles_username,
+            "password": args.opensubtitles_password
+        },
+        "opensubtitlescom": {
+            "username": args.opensubtitlescom_username,
+            "password": args.opensubtitlescom_password
+        },
+        "addic7ed": {
+            "username": args.addic7ed_user, 
+            "password": args.addic7ed_pass
+        }
     }
 
     # Callback para imprimir el estado en la consola
