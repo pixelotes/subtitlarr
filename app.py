@@ -30,7 +30,8 @@ def load_config():
         "search_paths": [], "languages": [], "schedule_enabled": False,
         "schedule_interval_minutes": 60,
         "credentials": {
-            "opensubtitles": {"api_key": ""},
+            "opensubtitles": {"username": "", "password": ""},
+            "opensubtitlescom": {"username": "", "password": ""},
             "addic7ed": {"username": "", "password": ""}
         }
     }
@@ -40,13 +41,27 @@ def load_config():
             config[key] = value
         elif isinstance(value, dict):
             for sub_key in value:
-                 if sub_key not in config.get(key, {}):
-                     config[key][sub_key] = value[sub_key]
+                if sub_key not in config.get(key, {}):
+                    config[key][sub_key] = value[sub_key]
 
+    # Merge environment variables into credentials
     creds = config['credentials']
-    creds['opensubtitles']['api_key'] = os.environ.get('OPENSUBTITLES_API_KEY', creds.get('opensubtitles', {}).get('api_key'))
-    creds['addic7ed']['username'] = os.environ.get('ADDIC7ED_USERNAME', creds.get('addic7ed', {}).get('username'))
-    creds['addic7ed']['password'] = os.environ.get('ADDIC7ED_PASSWORD', creds.get('addic7ed', {}).get('password'))
+    
+    # OpenSubtitles (legacy) environment variables
+    creds['opensubtitles']['username'] = os.environ.get('OPENSUBTITLES_USERNAME', creds.get('opensubtitles', {}).get('username', ''))
+    creds['opensubtitles']['password'] = os.environ.get('OPENSUBTITLES_PASSWORD', creds.get('opensubtitles', {}).get('password', ''))
+    
+    # OpenSubtitles.com environment variables
+    creds['opensubtitlescom']['username'] = os.environ.get('OPENSUBTITLESCOM_USERNAME', creds.get('opensubtitlescom', {}).get('username', ''))
+    creds['opensubtitlescom']['password'] = os.environ.get('OPENSUBTITLESCOM_PASSWORD', creds.get('opensubtitlescom', {}).get('password', ''))
+    # Backward compatibility: also check for API_KEY env var for OpenSubtitles.com
+    opensubtitles_api_key = os.environ.get('OPENSUBTITLES_API_KEY', '')
+    if opensubtitles_api_key and not creds['opensubtitlescom']['password']:
+        creds['opensubtitlescom']['password'] = opensubtitles_api_key
+    
+    # Addic7ed environment variables
+    creds['addic7ed']['username'] = os.environ.get('ADDIC7ED_USERNAME', creds.get('addic7ed', {}).get('username', ''))
+    creds['addic7ed']['password'] = os.environ.get('ADDIC7ED_PASSWORD', creds.get('addic7ed', {}).get('password', ''))
     
     return config
 
@@ -68,10 +83,18 @@ def status_callback(message, event_type="log"):
 def download_task(config):
     """La tarea de descarga que usa el callback con la cola."""
     print("--- BACKGROUND TASK STARTED ---")
+    
+    # Prepare credentials in the format expected by core.py
+    prepared_credentials = {
+        "opensubtitles": config['credentials']['opensubtitles'],
+        "opensubtitlescom": config['credentials']['opensubtitlescom'],
+        "addic7ed": config['credentials']['addic7ed']
+    }
+    
     core.run_downloader(
         config['search_paths'],
         config['languages'],
-        credentials=config['credentials'],
+        credentials=prepared_credentials,
         status_callback=status_callback
     )
     status_callback("finished", event_type="status")

@@ -217,3 +217,78 @@ progress::-webkit-progress-value {
     font-size: 12px;
     margin-top: 5px;
 }
+
+/* Provider Section Styles */
+.provider-section {
+    margin: 15px 0;
+    padding: 15px;
+    background: #252525;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.provider-section h4 {
+    margin: 0 0 10px 0;
+    color: #fcfcfc;
+    font-size: 1.1em;
+}
+
+.provider-section small {
+    color: #6c757d;
+    font-style: italic;
+    display: block;
+    margin-top: 5px;
+}
+
+/* --- Tab Styles --- */
+
+/* Style the tab container */
+.tabs {
+    overflow: hidden;
+    border-bottom: 1px solid #444;
+    margin-bottom: 20px;
+}
+
+/* Style the buttons inside the tab */
+.tabs .tab-button {
+    background-color: transparent;
+    color: #ccc;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    transition: background-color 0.3s, color 0.3s;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 6px 6px 0 0;
+    margin-right: 5px;
+}
+
+/* Change background color of buttons on hover */
+.tabs .tab-button:hover {
+    background-color: #3a3a3a;
+}
+
+/* Style for the active tab button */
+.tabs .tab-button.active {
+    background-color: #007bff; /* A distinct active color */
+    color: #fff;
+    font-weight: bold;
+}
+
+/* Style the tab content panes */
+.tab-content {
+    display: none; /* Hidden by default */
+    animation: fadeEffect 0.5s ease; /* Fading animation */
+}
+
+.tab-content.active {
+    display: block; /* Show the active tab */
+}
+
+/* Fade in animation */
+@keyframes fadeEffect {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

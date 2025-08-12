@@ -7,15 +7,31 @@
     "en",
     "es"
   ],
-  "schedule_enabled": true,
+  "schedule_enabled": false,
   "schedule_interval_minutes": 120,
+  "min_file_size_mb": 50,
+  "max_concurrent_workers": 2,
   "credentials": {
     "opensubtitles": {
-      "api_key": ""
+      "username": "",
+      "password": ""
+    },
+    "opensubtitlescom": {
+      "username": "",
+      "password": ""
     },
     "addic7ed": {
       "username": "",
       "password": ""
     }
+  },
+  "notifications": {
+    "enabled": false,
+    "webhook_url": "",
+    "notify_on_start": true,
+    "notify_on_completion": true,
+    "notify_on_errors": true,
+    "include_errors": true,
+    "webhook_type": "auto"
   }
 }
