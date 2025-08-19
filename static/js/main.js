@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Conexión a Server-Sent Events (SSE) ---
     const source = new EventSource('/stream');
 
-    // Escucha el evento genérico "message" en lugar del personalizado "update"
     source.onmessage = function(event) {
         const data = JSON.parse(event.data);
 
@@ -62,22 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- Lógica de la Interfaz (Botones y Formularios) ---
-
-    // Lógica para la sección de configuración plegable
-    const configHeader = document.getElementById('config-header');
-    const configContent = document.getElementById('config-content');
-    
-    if(configHeader && configContent) {
-        const toggleArrow = configHeader.querySelector('.toggle-arrow');
-        configHeader.addEventListener('click', () => {
-            configContent.classList.toggle('collapsed');
-            toggleArrow.textContent = configContent.classList.contains('collapsed') ? '▶' : '▼';
-        });
-    }
-
-    // Lógica para añadir y eliminar campos dinámicamente
     function setupDynamicInputs(containerId, addBtnId, inputClass) {
         const container = document.getElementById(containerId);
+        if (!container) return;
         document.getElementById(addBtnId).addEventListener('click', () => {
             container.appendChild(createInputGroup('', inputClass));
         });
@@ -110,24 +96,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Event Listeners para Botones de Acción ---
 
-    // Guardar Configuración
+    // Guardar Configuración (Función consolidada)
     document.getElementById('save-config').addEventListener('click', () => {
-        const paths = Array.from(document.querySelectorAll('.path-input')).map(input => input.value.trim()).filter(Boolean);
-        const langs = Array.from(document.querySelectorAll('.lang-input')).map(input => input.value.trim()).filter(Boolean);
-        const scheduleEnabled = document.getElementById('schedule-enabled').checked;
-        const scheduleInterval = parseInt(document.getElementById('schedule-interval').value, 10);
-        const osKey = document.getElementById('opensubtitles-key').value;
-        const addic7edUser = document.getElementById('addic7ed-user').value;
-        const addic7edPass = document.getElementById('addic7ed-pass').value;
-
-        const newConfig = {
-            search_paths: paths,
-            languages: langs,
-            schedule_enabled: scheduleEnabled,
-            schedule_interval_minutes: scheduleInterval,
+        const config = {
+            search_paths: Array.from(document.querySelectorAll('.path-input')).map(input => input.value.trim()).filter(Boolean),
+            languages: Array.from(document.querySelectorAll('.lang-input')).map(input => input.value.trim()).filter(Boolean),
+            schedule_enabled: document.getElementById('schedule-enabled').checked,
+            schedule_interval_minutes: parseInt(document.getElementById('schedule-interval').value),
+            min_file_size_mb: parseInt(document.getElementById('min-file-size').value),
+            max_concurrent_workers: parseInt(document.getElementById('max-workers').value),
             credentials: {
-                opensubtitles: { api_key: osKey },
-                addic7ed: { username: addic7edUser, password: addic7edPass }
+                opensubtitles: {
+                    username: document.getElementById('opensubtitles-user').value,
+                    password: document.getElementById('opensubtitles-pass').value
+                },
+                opensubtitlescom: {
+                    username: document.getElementById('opensubtitlescom-user').value,
+                    password: document.getElementById('opensubtitlescom-pass').value,
+                    api_key: document.getElementById('opensubtitlescom-apikey').value
+                },
+                addic7ed: {
+                    username: document.getElementById('addic7ed-user').value,
+                    password: document.getElementById('addic7ed-pass').value
+                }
+            },
+            notifications: {
+                enabled: document.getElementById('notifications-enabled').checked,
+                webhook_url: document.getElementById('webhook-url').value,
+                notify_on_start: document.getElementById('notify-start').checked,
+                notify_on_completion: document.getElementById('notify-completion').checked,
+                notify_on_errors: document.getElementById('notify-errors').checked,
+                include_errors: document.getElementById('include-error-details').checked,
+                webhook_type: "auto"
             }
         };
 
@@ -135,11 +135,22 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newConfig)
+            body: JSON.stringify(config)
         })
-        .then(response => response.json().then(data => ({ ok: response.ok, data })))
-        .then(({ ok, data }) => log(ok ? `✅ ${data.message}` : `❌ Error: ${data.error}`))
-        .catch(err => log(`❌ Connection error: ${err}`));
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || 'Unknown error'); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            log(`✅ ${data.message}`);
+            alert('Configuration saved successfully!'); // <-- POPUP CONFIRMATION
+        })
+        .catch(err => {
+            log(`❌ Connection error: ${err.message}`);
+            alert(`Error saving configuration: ${err.message}`);
+        });
     });
 
     // Escanear Estado

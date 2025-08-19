@@ -101,8 +101,12 @@
                             <input type="text" id="opensubtitlescom-user" value="{{ config.credentials.opensubtitlescom.username or '' }}">
                         </div>
                         <div class="input-group">
-                            <label for="opensubtitlescom-pass">Password/API Key:</label>
+                            <label for="opensubtitlescom-pass">Password:</label>
                             <input type="password" id="opensubtitlescom-pass" value="{{ config.credentials.opensubtitlescom.password or '' }}">
+                        </div>
+                        <div class="input-group">
+                            <label for="opensubtitlescom-apikey">API Key:</label>
+                            <input type="password" id="opensubtitlescom-apikey" value="{{ config.credentials.opensubtitlescom.api_key or '' }}">
                         </div>
                         <small>For the new OpenSubtitles.com service</small>
                     </div>
@@ -173,24 +177,21 @@
         function openTab(evt, tabName) {
             let i, tabcontent, tablinks;
             
-            // Hide all tab content
             tabcontent = document.getElementsByClassName("tab-content");
             for (i = 0; i < tabcontent.length; i++) {
                 tabcontent[i].classList.remove("active");
             }
             
-            // Remove the active class from all tab buttons
             tablinks = document.getElementsByClassName("tab-button");
             for (i = 0; i < tablinks.length; i++) {
                 tablinks[i].classList.remove("active");
             }
             
-            // Show the current tab and add an "active" class to the button
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
         }
 
-        // Webhook testing function
+        // Webhook testing function is now global
         function testWebhook() {
             const webhookUrl = document.getElementById('webhook-url').value;
             const resultElement = document.getElementById('webhook-test-result');
@@ -224,64 +225,6 @@
                 resultElement.className = 'test-error';
             });
         }
-
-        // Enhanced save config function
-        function saveEnhancedConfig() {
-            const config = {
-                search_paths: Array.from(document.querySelectorAll('.path-input')).map(input => input.value).filter(path => path),
-                languages: Array.from(document.querySelectorAll('.lang-input')).map(input => input.value).filter(lang => lang),
-                schedule_enabled: document.getElementById('schedule-enabled').checked,
-                schedule_interval_minutes: parseInt(document.getElementById('schedule-interval').value),
-                min_file_size_mb: parseInt(document.getElementById('min-file-size').value),
-                max_concurrent_workers: parseInt(document.getElementById('max-workers').value),
-                credentials: {
-                    opensubtitles: {
-                        username: document.getElementById('opensubtitles-user').value,
-                        password: document.getElementById('opensubtitles-pass').value
-                    },
-                    opensubtitlescom: {
-                        username: document.getElementById('opensubtitlescom-user').value,
-                        password: document.getElementById('opensubtitlescom-pass').value
-                    },
-                    addic7ed: {
-                        username: document.getElementById('addic7ed-user').value,
-                        password: document.getElementById('addic7ed-pass').value
-                    }
-                },
-                notifications: {
-                    enabled: document.getElementById('notifications-enabled').checked,
-                    webhook_url: document.getElementById('webhook-url').value,
-                    notify_on_start: document.getElementById('notify-start').checked,
-                    notify_on_completion: document.getElementById('notify-completion').checked,
-                    notify_on_errors: document.getElementById('notify-errors').checked,
-                    include_errors: document.getElementById('include-error-details').checked,
-                    webhook_type: "auto"
-                }
-            };
-
-            fetch('/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(config)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message) {
-                    alert('Configuration saved successfully!');
-                }
-            })
-            .catch(error => {
-                alert('Error saving configuration: ' + error.message);
-            });
-        }
-
-        // Add event listener for the save button
-        document.addEventListener('DOMContentLoaded', function() {
-            const saveButton = document.getElementById('save-config');
-            if (saveButton) {
-                saveButton.addEventListener('click', saveEnhancedConfig);
-            }
-        });
     </script>
 </body>
 </html>

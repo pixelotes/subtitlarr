@@ -1,7 +1,6 @@
 {
   "search_paths": [
-    "/media/series",
-    "/media/movies"
+    "/Users/raul"
   ],
   "languages": [
     "en",
@@ -13,16 +12,17 @@
   "max_concurrent_workers": 2,
   "credentials": {
     "opensubtitles": {
-      "username": "",
-      "password": ""
+      "username": "aaa",
+      "password": "vvv"
     },
     "opensubtitlescom": {
-      "username": "",
-      "password": ""
+      "username": "aaa",
+      "password": "vvv",
+      "api_key": "bbbbbb"
     },
     "addic7ed": {
-      "username": "",
-      "password": ""
+      "username": "ddd",
+      "password": "ffff"
     }
   },
   "notifications": {

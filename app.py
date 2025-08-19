@@ -35,7 +35,7 @@ def load_config():
         "max_concurrent_workers": 2,
         "credentials": {
             "opensubtitles": {"username": "", "password": ""},
-            "opensubtitlescom": {"username": "", "password": ""},
+            "opensubtitlescom": {"username": "", "password": "", "api_key": ""},
             "addic7ed": {"username": "", "password": ""}
         },
         "notifications": {
@@ -65,10 +65,7 @@ def load_config():
     # OpenSubtitles.com environment variables
     creds['opensubtitlescom']['username'] = os.environ.get('OPENSUBTITLESCOM_USERNAME', creds.get('opensubtitlescom', {}).get('username', ''))
     creds['opensubtitlescom']['password'] = os.environ.get('OPENSUBTITLESCOM_PASSWORD', creds.get('opensubtitlescom', {}).get('password', ''))
-    # Backward compatibility: also check for API_KEY env var for OpenSubtitles.com
-    opensubtitles_api_key = os.environ.get('OPENSUBTITLES_API_KEY', '')
-    if opensubtitles_api_key and not creds['opensubtitlescom']['password']:
-        creds['opensubtitlescom']['password'] = opensubtitles_api_key
+    creds['opensubtitlescom']['api_key'] = os.environ.get('OPENSUBTITLESCOM_APIKEY', creds.get('opensubtitlescom', {}).get('api_key', ''))
 
     # Addic7ed environment variables
     creds['addic7ed']['username'] = os.environ.get('ADDIC7ED_USERNAME', creds.get('addic7ed', {}).get('username', ''))

@@ -87,13 +87,20 @@ def run_downloader(paths, languages, credentials=None, status_callback=None):
         os_com_creds = credentials.get('opensubtitlescom', {})
         os_com_username = os_com_creds.get('username')
         os_com_password = os_com_creds.get('password')
-        
-        if os_com_username and os_com_password:
+        os_com_apikey = os_com_creds.get('api_key')
+
+        if os_com_username and os_com_apikey:
+            provider_configs['opensubtitlescom'] = {
+                'username': os_com_username,
+                'api_key': os_com_apikey
+            }
+            logging.info("OpenSubtitles.com credentials configured with API Key.")
+        elif os_com_username and os_com_password:
             provider_configs['opensubtitlescom'] = {
                 'username': os_com_username, 
                 'password': os_com_password
             }
-            logging.info("OpenSubtitles.com credentials configured.")
+            logging.info("OpenSubtitles.com credentials configured with password.")
         
         # Configuración para Addic7ed
         addic7ed_creds = credentials.get('addic7ed', {})
@@ -166,7 +173,8 @@ if __name__ == '__main__':
     parser.add_argument('--opensubtitles-username', help='Username for OpenSubtitles (legacy).')
     parser.add_argument('--opensubtitles-password', help='Password for OpenSubtitles (legacy).')
     parser.add_argument('--opensubtitlescom-username', help='Username for OpenSubtitles.com.')
-    parser.add_argument('--opensubtitlescom-password', help='Password/API Key for OpenSubtitles.com.')
+    parser.add_argument('--opensubtitlescom-password', help='Password for OpenSubtitles.com.')
+    parser.add_argument('--opensubtitlescom-apikey', help='API Key for OpenSubtitles.com.')
     parser.add_argument('--addic7ed-user', help='Addic7ed username.')
     parser.add_argument('--addic7ed-pass', help='Addic7ed password.')
     
@@ -180,7 +188,8 @@ if __name__ == '__main__':
         },
         "opensubtitlescom": {
             "username": args.opensubtitlescom_username,
-            "password": args.opensubtitlescom_password
+            "password": args.opensubtitlescom_password,
+            "api_key": args.opensubtitlescom_apikey
         },
         "addic7ed": {
             "username": args.addic7ed_user, 
