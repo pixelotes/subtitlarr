@@ -9,6 +9,7 @@ from flask import Flask, render_template, jsonify, request, Response
 from collections import deque
 import queue
 import core
+import notifications  # <-- IMPORT THE NEW MODULE
 
 # --- Setup de la aplicación ---
 app = Flask(__name__)
@@ -26,15 +27,25 @@ def load_config():
     except (FileNotFoundError, json.JSONDecodeError):
         config = {}
 
+    # --- Start of default values ---
     defaults = {
         "search_paths": [], "languages": [], "schedule_enabled": False,
         "schedule_interval_minutes": 60,
+        "min_file_size_mb": 50,
+        "max_concurrent_workers": 2,
         "credentials": {
             "opensubtitles": {"username": "", "password": ""},
             "opensubtitlescom": {"username": "", "password": ""},
             "addic7ed": {"username": "", "password": ""}
+        },
+        "notifications": {
+            "enabled": False, "webhook_url": "", "notify_on_start": True,
+            "notify_on_completion": True, "notify_on_errors": True,
+            "include_errors": True, "webhook_type": "auto"
         }
     }
+    # --- End of default values ---
+
 
     for key, value in defaults.items():
         if key not in config:
@@ -46,11 +57,11 @@ def load_config():
 
     # Merge environment variables into credentials
     creds = config['credentials']
-    
+
     # OpenSubtitles (legacy) environment variables
     creds['opensubtitles']['username'] = os.environ.get('OPENSUBTITLES_USERNAME', creds.get('opensubtitles', {}).get('username', ''))
     creds['opensubtitles']['password'] = os.environ.get('OPENSUBTITLES_PASSWORD', creds.get('opensubtitles', {}).get('password', ''))
-    
+
     # OpenSubtitles.com environment variables
     creds['opensubtitlescom']['username'] = os.environ.get('OPENSUBTITLESCOM_USERNAME', creds.get('opensubtitlescom', {}).get('username', ''))
     creds['opensubtitlescom']['password'] = os.environ.get('OPENSUBTITLESCOM_PASSWORD', creds.get('opensubtitlescom', {}).get('password', ''))
@@ -58,11 +69,11 @@ def load_config():
     opensubtitles_api_key = os.environ.get('OPENSUBTITLES_API_KEY', '')
     if opensubtitles_api_key and not creds['opensubtitlescom']['password']:
         creds['opensubtitlescom']['password'] = opensubtitles_api_key
-    
+
     # Addic7ed environment variables
     creds['addic7ed']['username'] = os.environ.get('ADDIC7ED_USERNAME', creds.get('addic7ed', {}).get('username', ''))
     creds['addic7ed']['password'] = os.environ.get('ADDIC7ED_PASSWORD', creds.get('addic7ed', {}).get('password', ''))
-    
+
     return config
 
 def save_config(new_config):
@@ -75,7 +86,7 @@ def status_callback(message, event_type="log"):
     """Pone actualizaciones en la cola para ser enviadas por el stream SSE."""
     data_to_send = json.dumps({"type": event_type, "message": message})
     message_queue.put(data_to_send)
-    
+
     if event_type == "log":
         log_entry = f"[{time.strftime('%H:%M:%S')}] {message}"
         log_history.append(log_entry)
@@ -83,22 +94,62 @@ def status_callback(message, event_type="log"):
 def download_task(config):
     """La tarea de descarga que usa el callback con la cola."""
     print("--- BACKGROUND TASK STARTED ---")
-    
-    # Prepare credentials in the format expected by core.py
-    prepared_credentials = {
-        "opensubtitles": config['credentials']['opensubtitles'],
-        "opensubtitlescom": config['credentials']['opensubtitlescom'],
-        "addic7ed": config['credentials']['addic7ed']
-    }
-    
-    core.run_downloader(
-        config['search_paths'],
-        config['languages'],
-        credentials=prepared_credentials,
-        status_callback=status_callback
-    )
-    status_callback("finished", event_type="status")
-    print("--- BACKGROUND TASK FINISHED ---")
+    notif_config = config.get("notifications", {})
+
+    # --- NOTIFY ON START ---
+    if notif_config.get("enabled") and notif_config.get("notify_on_start"):
+        notifications.send_notification(
+            notif_config.get("webhook_url"),
+            "Subtitle download process has started.",
+            title="🚀 Subtitlarr Task Started"
+        )
+
+    try:
+        # Prepare credentials in the format expected by core.py
+        prepared_credentials = {
+            "opensubtitles": config['credentials']['opensubtitles'],
+            "opensubtitlescom": config['credentials']['opensubtitlescom'],
+            "addic7ed": config['credentials']['addic7ed']
+        }
+
+        summary = core.run_downloader(
+            config['search_paths'],
+            config['languages'],
+            credentials=prepared_credentials,
+            status_callback=status_callback
+        )
+        status_callback("finished", event_type="status")
+        print("--- BACKGROUND TASK FINISHED ---")
+
+        # --- NOTIFY ON COMPLETION ---
+        if notif_config.get("enabled") and notif_config.get("notify_on_completion"):
+            completion_message = (
+                f"Successfully downloaded {summary['saved_count']} new subtitle(s). "
+                f"Processed {summary['total_videos']} video files."
+            )
+            notifications.send_notification(
+                notif_config.get("webhook_url"),
+                completion_message,
+                title="✅ Subtitlarr Task Finished"
+            )
+
+    except Exception as e:
+        print(f"--- BACKGROUND TASK FAILED: {e} ---")
+        status_callback(f"CRITICAL ERROR: {e}", event_type="log")
+        status_callback("finished", event_type="status")
+
+        # --- NOTIFY ON ERROR ---
+        if notif_config.get("enabled") and notif_config.get("notify_on_errors"):
+            error_message = "The subtitle download process failed."
+            if notif_config.get("include_errors"):
+                error_message += f"\n\n**Error Details:**\n```{e}```"
+            notifications.send_notification(
+                notif_config.get("webhook_url"),
+                error_message,
+                title="❌ Subtitlarr Task Failed",
+                include_error=True
+            )
+
 
 def scheduled_download_job():
     """La tarea que se ejecutará según la programación."""
@@ -161,6 +212,28 @@ def stream():
             message = message_queue.get()
             yield f"data: {message}\n\n"
     return Response(event_stream(), mimetype='text/event-stream')
+
+# --- NEW WEBHOOK TEST ROUTE ---
+@app.route('/test-webhook', methods=['POST'])
+def test_webhook_route():
+    """Endpoint to test webhook notifications."""
+    data = request.json
+    webhook_url = data.get('webhook_url')
+
+    if not webhook_url:
+        return jsonify({'success': False, 'error': 'Webhook URL is required.'}), 400
+
+    success = notifications.send_notification(
+        webhook_url,
+        "This is a test message from Subtitlarr!",
+        title="Webhook Test"
+    )
+
+    if success:
+        return jsonify({'success': True, 'message': 'Test notification sent successfully.'})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to send test notification. Check logs for details.'}), 500
+
 
 # --- Arranque de la aplicación y el hilo del planificador ---
 initial_config = load_config()
