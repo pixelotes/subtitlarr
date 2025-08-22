@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subtitlarr</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Subtitlarr</h1>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'Main')">🏠 Main</button>
+            <button class="tab-button" onclick="openTab(event, 'Settings')">⚙️ Settings</button>
+        </div>
+
+        <div id="Main" class="tab-content active">
+            <div class="actions">
+                <button id="scanBtn">Scan Status</button>
+                <button id="downloadBtn">Download Missing</button>
+            </div>
+
+            <div class="card">
+                <h2>Status & Logs</h2>
+                <div id="progress-container" class="hidden">
+                    <progress id="progress-bar" value="0" max="100"></progress>
+                    <span id="progress-label">0/0</span>
+                </div>
+                <pre id="log-output">{{ range .Logs }}{{ . }}
+{{ end }}</pre>
+            </div>
+        </div>
+
+        <div id="Settings" class="tab-content">
+            <div class="card">
+                <div id="config-form">
+                    <label><h2>Search Paths</h2></label>
+                    <div id="paths-container">
+                        {{ range .Config.SearchPaths }}
+                        <div class="input-group"><input type="text" value="{{ . }}" class="path-input"><button class="btn-delete">&times;</button></div>
+                        {{ end }}
+                    </div>
+                    <button id="add-path" class="btn-add">Add Path</button>
+                    
+                    <hr>
+                    
+                    <label><h2>Languages (2-letter codes)</h2></label>
+                    <div id="langs-container">
+                        {{ range .Config.Languages }}
+                        <div class="input-group"><input type="text" value="{{ . }}" class="lang-input"><button class="btn-delete">&times;</button></div>
+                        {{ end }}
+                    </div>
+                    <button id="add-lang" class="btn-add">Add Language</button>
+                    
+                    <hr>
+                    
+                    <label><h2>Download Settings</h2></label>
+                    <div class="input-group">
+                        <label for="min-file-size">Minimum file size (MB):</label>
+                        <input type="number" id="min-file-size" value="{{ if .Config.MinFileSizeMB }}{{ .Config.MinFileSizeMB }}{{ else }}50{{ end }}" min="1">
+                        <small>Skip files smaller than this (avoids samples/trailers)</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="max-workers">Concurrent workers:</label>
+                        <input type="number" id="max-workers" value="{{ if .Config.MaxConcurrentWorkers }}{{ .Config.MaxConcurrentWorkers }}{{ else }}3{{ end }}" min="1" max="10">
+                        <small>Number of simultaneous downloads (1-10)</small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <label><h2>Download Scheduler</h2></label>
+                    <div class="form-switch">
+                        <label for="schedule-enabled">Enable automatic download:</label>
+                        <input type="checkbox" id="schedule-enabled" class="schedule-input" {{ if .Config.ScheduleEnabled }}checked{{ end }}>
+                    </div>
+                    <div class="input-group">
+                        <label for="schedule-interval">Run every (minutes):</label>
+                        <input type="number" id="schedule-interval" class="schedule-input" value="{{ .Config.ScheduleIntervalMinutes }}" min="5">
+                    </div>
+                    
+                    <hr>
+                    
+                    <label><h2>Provider Credentials</h2></label>
+                    <div class="provider-section">
+                        <h4>OpenSubtitles.org (Legacy)</h4>
+                        <div class="input-group">
+                            <label for="opensubtitles-user">Username:</label>
+                            <input type="text" id="opensubtitles-user" value="{{ .Config.Credentials.Opensubtitles.Username }}">
+                        </div>
+                        <div class="input-group">
+                            <label for="opensubtitles-pass">Password:</label>
+                            <input type="password" id="opensubtitles-pass" value="{{ .Config.Credentials.Opensubtitles.Password }}">
+                        </div>
+                        <small>For the original OpenSubtitles service</small>
+                    </div>
+                    <div class="provider-section">
+                        <h4>OpenSubtitles.com (New)</h4>
+                        <div class="input-group">
+                            <label for="opensubtitlescom-user">Username:</label>
+                            <input type="text" id="opensubtitlescom-user" value="{{ .Config.Credentials.Opensubtitlescom.Username }}">
+                        </div>
+                        <div class="input-group">
+                            <label for="opensubtitlescom-pass">Password:</label>
+                            <input type="password" id="opensubtitlescom-pass" value="{{ .Config.Credentials.Opensubtitlescom.Password }}">
+                        </div>
+                        <div class="input-group">
+                            <label for="opensubtitlescom-apikey">API Key:</label>
+                            <input type="password" id="opensubtitlescom-apikey" value="{{ .Config.Credentials.Opensubtitlescom.APIKey }}">
+                        </div>
+                        <small>For the new OpenSubtitles.com service</small>
+                    </div>
+                    <div class="provider-section">
+                        <h4>Addic7ed</h4>
+                        <div class="input-group">
+                            <label for="addic7ed-user">Username:</label>
+                            <input type="text" id="addic7ed-user" value="{{ .Config.Credentials.Addic7ed.Username }}">
+                        </div>
+                        <div class="input-group">
+                            <label for="addic7ed-pass">Password:</label>
+                            <input type="password" id="addic7ed-pass" value="{{ .Config.Credentials.Addic7ed.Password }}">
+                        </div>
+                        <small>For TV shows and series subtitles</small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="config-section">
+                        <h2>Webhook Notifications</h2>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="notifications-enabled" {{ if and .Config.Notifications .Config.Notifications.Enabled }}checked{{ end }}> 
+                                Enable Notifications
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="webhook-url">Webhook URL:</label>
+                            <input type="url" id="webhook-url" placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/services/..." 
+                                   value="{{ if .Config.Notifications }}{{ .Config.Notifications.WebhookURL }}{{ end }}">
+                            <small>Supports Discord, Slack, and generic webhooks</small>
+                        </div>
+                        <div class="notification-options">
+                            <h4>Notification Settings:</h4>
+                            <label>
+                                <input type="checkbox" id="notify-start" {{ if or (not .Config.Notifications) (not .Config.Notifications.NotifyOnStart) }}checked{{ end }}> 
+                                Notify on start
+                            </label>
+                            <label>
+                                <input type="checkbox" id="notify-completion" {{ if or (not .Config.Notifications) (not .Config.Notifications.NotifyOnCompletion) }}checked{{ end }}> 
+                                Notify on completion
+                            </label>
+                            <label>
+                                <input type="checkbox" id="notify-errors" {{ if or (not .Config.Notifications) (not .Config.Notifications.NotifyOnErrors) }}checked{{ end }}> 
+                                Notify on errors
+                            </label>
+                            <label>
+                                <input type="checkbox" id="include-error-details" {{ if or (not .Config.Notifications) (not .Config.Notifications.IncludeErrors) }}checked{{ end }}> 
+                                Include error details
+                            </label>
+                        </div>
+                        <div class="webhook-test">
+                            <button type="button" onclick="testWebhook()">🧪 Test Webhook</button>
+                            <span id="webhook-test-result"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button id="save-config">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    
+    <script>
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            
+            // Hide all tab content
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            
+            // Remove the active class from all tab buttons
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            
+            // Show the current tab and add an "active" class to the button
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        // Webhook testing function
+        function testWebhook() {
+            const webhookUrl = document.getElementById('webhook-url').value;
+            const resultElement = document.getElementById('webhook-test-result');
+            
+            if (!webhookUrl) {
+                resultElement.textContent = 'Please enter a webhook URL first';
+                resultElement.className = 'test-error';
+                return;
+            }
+            
+            resultElement.textContent = 'Testing...';
+            resultElement.className = '';
+            
+            fetch('/test-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ webhook_url: webhookUrl })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resultElement.textContent = '✅ Webhook test successful!';
+                    resultElement.className = 'test-success';
+                } else {
+                    resultElement.textContent = `❌ Test failed: ${data.error}`;
+                    resultElement.className = 'test-error';
+                }
+            })
+            .catch(error => {
+                resultElement.textContent = `❌ Test failed: ${error.message}`;
+                resultElement.className = 'test-error';
+            });
+        }
+    </script>
+</body>
+</html>

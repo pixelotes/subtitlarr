@@ -1,37 +1,36 @@
 {
   "search_paths": [
-    "/Users/raul"
+    "/media/tv"
   ],
   "languages": [
-    "en",
     "es"
   ],
-  "schedule_enabled": false,
-  "schedule_interval_minutes": 120,
-  "min_file_size_mb": 50,
-  "max_concurrent_workers": 2,
+  "schedule_enabled": true,
+  "schedule_interval_minutes": 360,
   "credentials": {
     "opensubtitles": {
-      "username": "aaa",
-      "password": "vvv"
+      "username": "",
+      "password": ""
     },
     "opensubtitlescom": {
-      "username": "aaa",
-      "password": "vvv",
-      "api_key": "bbbbbb"
+      "username": "",
+      "password": "",
+      "api_key": ""
     },
     "addic7ed": {
-      "username": "ddd",
-      "password": "ffff"
+      "username": "",
+      "password": ""
     }
   },
+  "min_file_size_mb": 50,
+  "max_concurrent_workers": 3,
   "notifications": {
     "enabled": false,
     "webhook_url": "",
-    "notify_on_start": true,
-    "notify_on_completion": true,
-    "notify_on_errors": true,
-    "include_errors": true,
+    "notify_on_start": false,
+    "notify_on_completion": false,
+    "notify_on_errors": false,
+    "include_errors": false,
     "webhook_type": "auto"
   }
 }

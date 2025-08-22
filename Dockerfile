@@ -1,41 +1,45 @@
-# ---- Stage 1: Builder ----
-# Use Alpine base image. Install build-essentials for any C extensions in Python packages.
-FROM python:3.12-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache build-base
-
-# Create and activate a virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy and install requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-
-# ---- Stage 2: Final Image ----
-FROM python:3.12-alpine
-
-# Install su-exec, the lightweight equivalent of gosu for Alpine
-RUN apk add --no-cache su-exec
-
-# Copy the virtual environment from the builder stage
-COPY --from=builder /opt/venv /opt/venv
-
-# Set the working directory
 WORKDIR /app
 
-# Copy the application source code and the new entrypoint script
-COPY . /app
-COPY entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Copy go mod files
+COPY go.mod ./
 
-# Add the venv to the PATH
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy source code
+COPY . .
 
-# Set the entrypoint to our script
-ENTRYPOINT ["entrypoint.sh"]
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o subtitlarr .
 
-# Set the default command to be executed by the entrypoint
+# Use a minimal Python image since we still need subliminal
+FROM python:3.11-alpine
 
-CMD ["python", "app.py"]
+# Install subliminal and other dependencies
+RUN pip install subliminal
+
+# Create app directory
+WORKDIR /app
+
+# Copy the Go binary from the builder stage
+COPY --from=builder /app/subtitlarr .
+
+# Create cache directory
+RUN mkdir -p cache
+
+# Expose port
+EXPOSE 5000
+
+# Create non-root user
+RUN addgroup -g 1000 appgroup && \
+    adduser -u 1000 -S -G appgroup appuser && \
+    chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:5000/ || exit 1
+
+# Default command
+ENTRYPOINT ["./subtitlarr"]
